@@ -1,0 +1,74 @@
+[project]
+name = "pyrotobuf"
+version = "0.1.0"
+description = "pyrotobuf"
+authors = [
+    {name = "Simon Gomizelj", email = "simon@vodik.xyz"}
+]
+license = {file = "LICENSE.txt"}
+classifiers = [
+    "Programming Language :: Rust",
+    "Programming Language :: Python :: Implementation :: CPython",
+    "Programming Language :: Python :: Implementation :: PyPy",
+]
+requires-python = ">=3.12"
+dependencies = [
+    "maturin==1.4.0",
+    "pytest==8.0.0",
+    "ruff==0.3.0",
+]
+
+[project.optional-dependencies]
+pylsp = [
+    "pylsp-mypy==0.6.8",
+    "python-lsp-ruff==2.2.0",
+    "python-lsp-server[rope]==1.10.0",
+]
+
+[build-system]
+requires = ["maturin>=1.0,<2.0"]
+build-backend = "maturin"
+
+[tool.maturin]
+features = ["pyo3/extension-module"]
+python-source = "python"
+module-name = "pyrotobuf._pyrotobuf"
+
+[tool.ruff]
+fix=true
+line-length = 100
+target-version = "py312"
+
+[tool.ruff.lint]
+ignore = [
+  "COM812",
+  "COM819",
+  "D206",
+  "D300",
+  "E111",
+  "E114",
+  "E117",
+  "E501",
+  "ISC001",
+  "ISC002",
+  "PLC0415",
+  "Q000",
+  "Q001",
+  "Q002",
+  "Q003",
+  "W191",
+]
+dummy-variable-rgx = "^_[a-zA-Z0-9k]*$"
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+skip-magic-trailing-comma = false
+line-ending = "auto"
+
+[tool.ruff.lint.flake8-pytest-style]
+fixture-parentheses = false
+mark-parentheses = false
+parametrize-names-type = "tuple"
+parametrize-values-row-type = "tuple"
+parametrize-values-type = "list"
