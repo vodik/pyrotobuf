@@ -33,7 +33,7 @@ jobs:
       - name: Upload wheels
         uses: actions/upload-artifact@v4
         with:
-          name: wheels-${{ matrix.target }}
+          name: wheel-linux-${{ matrix.target }}
           path: dist
           overwrite: true
 
@@ -57,7 +57,7 @@ jobs:
       - name: Upload wheels
         uses: actions/upload-artifact@v4
         with:
-          name: wheels-${{ matrix.target }}
+          name: wheel-windows-${{ matrix.target }}
           path: dist
           overwrite: true
 
@@ -80,7 +80,7 @@ jobs:
       - name: Upload wheels
         uses: actions/upload-artifact@v4
         with:
-          name: wheels-${{ matrix.target }}
+          name: wheel-macos-${{ matrix.target }}
           path: dist
           overwrite: true
 
@@ -96,7 +96,7 @@ jobs:
       - name: Upload sdist
         uses: actions/upload-artifact@v4
         with:
-          name: wheels
+          name: wheel-sdist
           path: dist
           overwrite: true
 
@@ -141,7 +141,7 @@ jobs:
     steps:
       - uses: actions/download-artifact@v4
         with:
-          pattern: wheels-*
+          pattern: wheel-*
           merge-multiple: true
       - name: Publish to PyPI
         uses: PyO3/maturin-action@v1
