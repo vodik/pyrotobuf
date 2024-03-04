@@ -16,7 +16,7 @@ impl DescriptorPool {
     fn new(py: Python, bytes: &[u8]) -> PyResult<Py<Self>> {
         Py::new(
             py,
-            Self(prost_reflect::DescriptorPool::decode(bytes.as_ref()).unwrap()),
+            Self(prost_reflect::DescriptorPool::decode(bytes).unwrap()),
         )
     }
 

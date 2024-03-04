@@ -1,4 +1,4 @@
-name: CI
+name: ci
 
 on:
   push:
@@ -100,6 +100,22 @@ jobs:
           path: dist
           overwrite: true
 
+  ruff:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install .
+      - name: ruff
+        run: |
+          pip install ruff
+          ruff --output-format=github .
+
   pytest:
     runs-on: ubuntu-latest
     steps:
@@ -112,26 +128,43 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           pip install .
-      - name: Pytest
+      - name: pytest
         run: |
           pip install pytest
           pytest tests
 
-  ruff:
+  cargo-fmt:
+    name: cargo fmt
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions-rust-lang/setup-rust-toolchain@v1
         with:
-          python-version: '3.12'
-      - name: Install dependencies
+          components: rustfmt
+      - name: cargo fmt
+        uses: actions-rust-lang/rustfmt@v1
+
+  cargo-test:
+    name: cargo test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions-rust-lang/setup-rust-toolchain@v1
+      - name: cargo test
         run: |
-          python -m pip install --upgrade pip
-          pip install .
-      - name: Ruff
+          cargo test
+
+  cargo-clippy:
+    name: cargo clippy
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions-rust-lang/setup-rust-toolchain@v1
+        with:
+          components: clippy
+      - name: cargo clippy
         run: |
-          pip install ruff
-          ruff --output-format=github .
+          cargo clippy
 
   release:
     name: Release
