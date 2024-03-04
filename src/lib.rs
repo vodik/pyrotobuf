@@ -282,6 +282,12 @@ fn python_to_value(py: Python, value: &mut Value, obj: PyObject) -> PyResult<()>
     Ok(())
 }
 
+#[derive(FromPyObject)]
+enum Format<'a> {
+    Protobuf(&'a [u8]), // input is a positive int
+    Text(&'a str),
+}
+
 #[pyclass]
 #[derive(Clone)]
 struct Message(prost_reflect::DynamicMessage);
@@ -293,20 +299,19 @@ impl Message {
     fn new(
         py: Python,
         descriptor: &MessageDescriptor,
-        data: Option<PyObject>,
+        data: Option<Format>,
         kwargs: Option<&PyDict>,
     ) -> PyResult<Py<Self>> {
-        let message = if let Some(obj) = data {
-            if let Ok(bytes) = obj.extract::<&[u8]>(py) {
-                Self(prost_reflect::DynamicMessage::decode(descriptor.0.clone(), bytes).unwrap())
-            } else if let Ok(text) = obj.extract::<&str>(py) {
-                Self(
+        let message = if let Some(format) = data {
+            Self(match format {
+                Format::Protobuf(bytes) => {
+                    prost_reflect::DynamicMessage::decode(descriptor.0.clone(), bytes).unwrap()
+                }
+                Format::Text(text) => {
                     prost_reflect::DynamicMessage::parse_text_format(descriptor.0.clone(), text)
-                        .unwrap(),
-                )
-            } else {
-                todo!()
-            }
+                        .unwrap()
+                }
+            })
         } else {
             let mut message = Self(prost_reflect::DynamicMessage::new(descriptor.0.clone()));
 
