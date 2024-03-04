@@ -3,25 +3,11 @@ from functools import partial
 
 from . import _pyrotobuf
 
-_SERVICE = None
-
-
-class Service:
-    def __init__(self, descriptor):
-        self._descriptor = descriptor
-
-    def __call__(self, cls):
-        cls.__service_name__ = self._descriptor.name
-
-        global _SERVICE
-        _SERVICE = (cls, self._descriptor)
-        return cls
-
 
 class Descriptors:
     def __init__(self, data: bytes):
         self._pool = _pyrotobuf.DescriptorPool(data)
-        self._messages = {}
+        self._messages: dict[str, _pyrotobuf.Message] = {}
 
     def patch_dataclass(self, cls, descriptor, attribute_map):
         cls.__protobuf__ = descriptor, attribute_map
@@ -50,10 +36,6 @@ class Descriptors:
             return self.patch_dataclass(cls, descriptor, attribute_map)
 
         return inner
-
-    def service(self, name):
-        descriptor = self._pool.get_service_by_name(name)
-        return Service(descriptor)
 
     def from_bytes[T](self, cls: type[T], msg: bytes) -> T:
         descriptor, _ = cls.__protobuf__
