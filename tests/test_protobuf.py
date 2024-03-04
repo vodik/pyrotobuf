@@ -28,6 +28,13 @@ def test_binary_roundtrip(protos):
     assert protos.Message("test.v1.TestMessage", protobuf) == message
 
 
+def test_json_roundtrip(protos):
+    message = protos.Message("test.v1.TestMessage", greeting="Hello World")
+    json = message.to_json()
+    assert json == '{"greeting":"Hello World"}'
+    assert protos.Message.from_json("test.v1.TestMessage", json) == message
+
+
 def test_text_roundtrip(protos):
     message = protos.Message("test.v1.TestMessage", greeting="Hello World")
     protobuf = str(message)

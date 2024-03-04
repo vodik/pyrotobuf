@@ -20,9 +20,19 @@ class Descriptors:
         self._registered = {}
         self.messages = Messages(self._pool)
 
-    def Message(self, name, data=None, /, **kwargs):
-        descriptor = self._pool.get_message_by_name(name)
-        return _pyrotobuf.Message(descriptor, data, **kwargs)
+        # FIXME: Hack
+        class Message:
+            _pool = self._pool
+
+            def from_json(self, name, json):
+                descriptor = self._pool.get_message_by_name(name)
+                return _pyrotobuf.Message.from_json(descriptor, json)
+
+            def __call__(self, name, data=None, /, **kwargs):
+                descriptor = self._pool.get_message_by_name(name)
+                return _pyrotobuf.Message(descriptor, data, **kwargs)
+
+        self.Message = Message()
 
     def message(self, name):
         descriptor = self._pool.get_message_by_name(name)

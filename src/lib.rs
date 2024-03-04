@@ -211,6 +211,12 @@ struct Field {
     value: PyObject,
 }
 
+impl Field {
+    fn new(descriptor: Py<FieldDescriptor>, value: PyObject) -> Self {
+        Self { descriptor, value }
+    }
+}
+
 #[pymethods]
 impl Field {
     #[getter]
@@ -337,9 +343,8 @@ impl Message {
         self.0
             .fields()
             .map(|(descriptor, value)| {
-                let value = value_to_python(py, value);
                 let descriptor = Py::new(py, FieldDescriptor(descriptor))?;
-                Py::new(py, Field { value, descriptor })
+                Py::new(py, Field::new(descriptor, value_to_python(py, value)))
             })
             .collect()
     }
@@ -369,8 +374,8 @@ impl Message {
         use_enum_numbers: bool,
         use_proto_field_name: bool,
         skip_default_fields: bool,
-    ) -> PyResult<Vec<u8>> {
-        let mut serializer = serde_json::Serializer::new(vec![]);
+    ) -> String {
+        let mut serializer = serde_json::Serializer::new(Vec::new());
         self.0
             .serialize_with_options(
                 &mut serializer,
@@ -381,7 +386,8 @@ impl Message {
                     .skip_default_fields(skip_default_fields),
             )
             .unwrap();
-        Ok(serializer.into_inner())
+
+        String::from_utf8(serializer.into_inner()).unwrap()
     }
 
     fn __eq__(&self, other: PyRef<Self>) -> bool {
