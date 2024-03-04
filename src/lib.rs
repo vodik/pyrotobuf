@@ -158,6 +158,7 @@ impl FieldDescriptor {
         }
     }
 
+    #[getter]
     fn cadinality(&self, py: Python) -> PyObject {
         match self.0.cardinality() {
             prost_reflect::Cardinality::Optional => "optional".into_py(py),
@@ -200,41 +201,6 @@ impl FieldDescriptor {
             kind,
             cardinality,
         )
-    }
-}
-
-#[pyclass(frozen)]
-struct Field {
-    #[pyo3(get)]
-    descriptor: Py<FieldDescriptor>,
-    #[pyo3(get)]
-    value: PyObject,
-}
-
-impl Field {
-    fn new(descriptor: Py<FieldDescriptor>, value: PyObject) -> Self {
-        Self { descriptor, value }
-    }
-}
-
-#[pymethods]
-impl Field {
-    #[getter]
-    fn name(&self) -> &str {
-        self.descriptor.get().0.name()
-    }
-
-    #[getter]
-    fn full_name(&self) -> &str {
-        self.descriptor.get().0.full_name()
-    }
-
-    fn __repr__(&self, py: Python) -> PyResult<String> {
-        Ok(format!(
-            "<Field(field='{}', value={}>",
-            self.descriptor.get().__repr__(),
-            self.value.as_ref(py).repr()?
-        ))
     }
 }
 
@@ -339,12 +305,12 @@ impl Message {
         Py::new(py, MessageDescriptor(self.0.descriptor()))
     }
 
-    fn fields(&self, py: Python) -> PyResult<Vec<Py<Field>>> {
+    fn fields(&self, py: Python) -> PyResult<Vec<(Py<FieldDescriptor>, PyObject)>> {
         self.0
             .fields()
             .map(|(descriptor, value)| {
                 let descriptor = Py::new(py, FieldDescriptor(descriptor))?;
-                Py::new(py, Field::new(descriptor, value_to_python(py, value)))
+                Ok((descriptor, value_to_python(py, value)))
             })
             .collect()
     }
@@ -426,12 +392,11 @@ impl Message {
         let fragments: Vec<String> = self
             .fields(py)?
             .into_iter()
-            .map(|field| {
-                let field = field.borrow(py);
+            .map(|(descriptor, value)| {
                 Ok(format!(
                     "{}={}",
-                    field.descriptor.get().name(),
-                    field.value.as_ref(py).repr()?,
+                    descriptor.get().name(),
+                    value.as_ref(py).repr()?,
                 ))
             })
             .collect::<PyResult<_>>()?;
@@ -460,7 +425,6 @@ fn _pyrotobuf(_py: Python, m: &PyModule) -> PyResult<()> {
     m.add_class::<MessageDescriptor>()?;
     m.add_class::<MethodDescriptor>()?;
     m.add_class::<ServiceDescriptor>()?;
-    m.add_class::<Field>()?;
     m.add_class::<Message>()?;
     Ok(())
 }

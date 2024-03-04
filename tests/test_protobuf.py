@@ -78,6 +78,20 @@ def test_message_unknown_fields_by_number(protos):
         message[2] = "Should fail"
 
 
+def test_message_iter_fields(protos):
+    message = protos.Message("test.v1.TestMessage", greeting="Hello World")
+
+    fields = message.fields()
+    assert len(fields) == 1
+
+    descriptor, value = fields[0]
+    assert value == "Hello World"
+    assert descriptor.number == 1
+    assert descriptor.name == "greeting"
+    assert descriptor.kind == "string"
+    assert descriptor.cadinality == "optional"
+
+
 def test_dataclass_roundtrip(protos):
     @protos.message("test.v1.TestMessage")
     class TestMessage:
