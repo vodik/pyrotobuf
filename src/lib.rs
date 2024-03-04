@@ -1,11 +1,9 @@
 use prost_reflect::prost::Message as _;
 use prost_reflect::text_format::FormatOptions;
-use prost_reflect::{ReflectMessage, Value};
-use pyo3::exceptions::{PyAttributeError, PyIndexError};
+use prost_reflect::{ReflectMessage, SerializeOptions, Value};
+use pyo3::exceptions::{PyAttributeError, PyIndexError, PyLookupError};
 use pyo3::prelude::*;
 use pyo3::types::{PyBytes, PyDict};
-// use pythonize::Pythonizer;
-use serde::Serialize;
 use std::borrow::Cow;
 use std::collections::HashMap;
 
@@ -22,26 +20,18 @@ impl DescriptorPool {
         )
     }
 
-    fn get_service_by_name(
-        &self,
-        py: Python,
-        name: &str,
-    ) -> PyResult<Option<Py<ServiceDescriptor>>> {
-        let descriptor = self.0.get_service_by_name(name);
-        descriptor
-            .map(|descriptor| Py::new(py, ServiceDescriptor(descriptor)))
-            .transpose()
+    fn get_service_by_name(&self, py: Python, name: &str) -> PyResult<Py<ServiceDescriptor>> {
+        self.0
+            .get_service_by_name(name)
+            .ok_or_else(|| PyLookupError::new_err(name.to_string()))
+            .and_then(|descriptor| Py::new(py, ServiceDescriptor(descriptor)))
     }
 
-    fn get_message_by_name(
-        &self,
-        py: Python,
-        name: &str,
-    ) -> PyResult<Option<Py<MessageDescriptor>>> {
-        let descriptor = self.0.get_message_by_name(name);
-        descriptor
-            .map(|descriptor| Py::new(py, MessageDescriptor(descriptor)))
-            .transpose()
+    fn get_message_by_name(&self, py: Python, name: &str) -> PyResult<Py<MessageDescriptor>> {
+        self.0
+            .get_message_by_name(name)
+            .ok_or_else(|| PyLookupError::new_err(name.to_string()))
+            .and_then(|descriptor| Py::new(py, MessageDescriptor(descriptor)))
     }
 }
 
@@ -301,15 +291,15 @@ impl Message {
         descriptor: &MessageDescriptor,
         data: Option<Format>,
         kwargs: Option<&PyDict>,
-    ) -> PyResult<Py<Self>> {
+    ) -> PyResult<Self> {
         let message = if let Some(format) = data {
+            let descriptor = descriptor.0.clone();
             Self(match format {
                 Format::Protobuf(bytes) => {
-                    prost_reflect::DynamicMessage::decode(descriptor.0.clone(), bytes).unwrap()
+                    prost_reflect::DynamicMessage::decode(descriptor, bytes).unwrap()
                 }
                 Format::Text(text) => {
-                    prost_reflect::DynamicMessage::parse_text_format(descriptor.0.clone(), text)
-                        .unwrap()
+                    prost_reflect::DynamicMessage::parse_text_format(descriptor, text).unwrap()
                 }
             })
         } else {
@@ -324,7 +314,18 @@ impl Message {
             message
         };
 
-        Py::new(py, message)
+        Ok(message)
+    }
+
+    #[staticmethod]
+    fn from_json(py: Python, descriptor: &MessageDescriptor, input: &str) -> PyResult<Py<Self>> {
+        let mut deserializer = serde_json::de::Deserializer::from_str(input);
+        let message =
+            prost_reflect::DynamicMessage::deserialize(descriptor.0.clone(), &mut deserializer)
+                .unwrap();
+        deserializer.end().unwrap();
+
+        Py::new(py, Self(message))
     }
 
     #[getter]
@@ -361,9 +362,25 @@ impl Message {
         )
     }
 
-    fn to_json(&self) -> PyResult<Vec<u8>> {
+    #[pyo3(signature = (*, stringify_64_bit_integers = false, use_enum_numbers = false, use_proto_field_name = false, skip_default_fields = false))]
+    fn to_json(
+        &self,
+        stringify_64_bit_integers: bool,
+        use_enum_numbers: bool,
+        use_proto_field_name: bool,
+        skip_default_fields: bool,
+    ) -> PyResult<Vec<u8>> {
         let mut serializer = serde_json::Serializer::new(vec![]);
-        self.0.serialize(&mut serializer).unwrap();
+        self.0
+            .serialize_with_options(
+                &mut serializer,
+                &SerializeOptions::new()
+                    .stringify_64_bit_integers(stringify_64_bit_integers)
+                    .use_enum_numbers(use_enum_numbers)
+                    .use_proto_field_name(use_proto_field_name)
+                    .skip_default_fields(skip_default_fields),
+            )
+            .unwrap();
         Ok(serializer.into_inner())
     }
 
