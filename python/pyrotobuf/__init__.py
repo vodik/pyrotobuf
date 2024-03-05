@@ -28,7 +28,7 @@ class Method:
 
 
 def snake_to_pascal(snake_str):
-    return ''.join(word.capitalize() for word in snake_str.split('_'))
+    return "".join(word.capitalize() for word in snake_str.split("_"))
 
 
 class Descriptors:
@@ -88,17 +88,20 @@ class Descriptors:
 
         def inner(cls):
             for attr_name, attr_value in cls.__dict__.items():
-                if callable(attr_value) and not attr_name.startswith('__'):
+                if callable(attr_value) and not attr_name.startswith("__"):
                     method_name = snake_to_pascal(attr_name)
                     method = methods[method_name]
                     table[method_name] = attr_name
-                    setattr(cls, attr_name, make_rpc_method(attr_value, method.input_message, method.output_message))
+                    setattr(
+                        cls,
+                        attr_name,
+                        make_rpc_method(attr_value, method.input_message, method.output_message),
+                    )
 
             setattr(cls, "__getitem__", __getitem__)
             return cls
 
         return inner
-
 
     def from_message(self, message):
         field_type = self._registered[message.descriptor.full_name][0]
