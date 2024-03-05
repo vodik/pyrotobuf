@@ -1,3 +1,4 @@
+from functools import partial
 from dataclasses import dataclass, fields
 from typing import TypeVar
 
@@ -12,6 +13,22 @@ class Messages:
 
     def __getitem__(self, name):
         return self._pool.get_message_by_name(name)
+
+
+class Method:
+    def __init__(self, fn, input, output):
+        self.input = partial(_pyrotobuf.message, input)
+        self.output = partial(_pyrotobuf.message, output)
+        self._fn = fn
+
+    def __call__(self, data=None, /, **kwargs):
+        message = self.Input(data, **kwargs)
+        print(self)
+        return self._fn(self, message)
+
+
+def snake_to_pascal(snake_str):
+    return ''.join(word.capitalize() for word in snake_str.split('_'))
 
 
 class Descriptors:
@@ -46,6 +63,42 @@ class Descriptors:
             return _patch_dataclass(cls, descriptor, self, attribute_map)
 
         return inner
+
+    def service(self, name):
+        descriptor = self._pool.get_service_by_name(name)
+        methods = descriptor.methods()
+
+        table = {}
+
+        def __getitem__(self, name, data=None, /, **kwargs):
+            attr_name = table[name]
+            return getattr(self, attr_name)
+
+        def make_rpc_method(fn, input, output):
+            Input = partial(_pyrotobuf.Message, input)
+            Output = partial(_pyrotobuf.Message, output)
+
+            def rpc_method(self, data=None, /, **kwargs):
+                message = Input(data, **kwargs)
+                return fn(self, message)
+
+            rpc_method.Input = Input
+            rpc_method.Output = Output
+            return rpc_method
+
+        def inner(cls):
+            for attr_name, attr_value in cls.__dict__.items():
+                if callable(attr_value) and not attr_name.startswith('__'):
+                    method_name = snake_to_pascal(attr_name)
+                    method = methods[method_name]
+                    table[method_name] = attr_name
+                    setattr(cls, attr_name, make_rpc_method(attr_value, method.input_message, method.output_message))
+
+            setattr(cls, "__getitem__", __getitem__)
+            return cls
+
+        return inner
+
 
     def from_message(self, message):
         field_type = self._registered[message.descriptor.full_name][0]
