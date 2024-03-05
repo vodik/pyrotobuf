@@ -13,18 +13,18 @@ classifiers = [
 ]
 requires-python = ">=3.9"
 dependencies = [
-    "maturin==1.4.0",
-    "pytest==8.0.0",
-    "ruff==0.3.0",
+    "maturin>=1.4.0",
+    "pytest>=8.0.0",
+    "ruff>=0.3.0",
     "anyio>=4.3.0",
     "trio>=0.24.0",
 ]
 
 [project.optional-dependencies]
 pylsp = [
-    "pylsp-mypy==0.6.8",
-    "python-lsp-ruff==2.2.0",
-    "python-lsp-server[rope]==1.10.0",
+    "pylsp-mypy>=0.6.8",
+    "python-lsp-ruff>=2.2.0",
+    "python-lsp-server[rope]>=1.10.0",
 ]
 
 [build-system]
